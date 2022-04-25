@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@
 
 package zio.prelude
 
-import zio.test.TestResult
-import zio.test.laws._
-
 /**
  * An `Equivalence[A, B]` defines an equivalence between two types `A` and `B`.
  * These types represent different ways to store the same information.
@@ -32,7 +29,14 @@ import zio.test.laws._
  * @param to   A function that converts an `A` into a `B`.
  * @param from A function that converts a `B` into an `A`.
  */
-final case class Equivalence[A, B](to: A => B, from: B => A) { self =>
+trait Equivalence[A, B] extends PartialEquivalence[A, B, Nothing, Nothing] { self =>
+
+  def to: A => B
+  def from: B => A
+
+  final def toPartial: A => Either[Nothing, B] = (a: A) => Right(to(a))
+
+  final def fromPartial: B => Either[Nothing, A] = (b: B) => Right(from(b))
 
   /**
    * Composes this equivalence with the specified equivalence.
@@ -50,32 +54,28 @@ final case class Equivalence[A, B](to: A => B, from: B => A) { self =>
   /**
    * Flips this equivalence around.
    */
-  def flip: Equivalence[B, A] = Equivalence(from, to)
+  override def flip: Equivalence[B, A] = Equivalence(from, to)
 
-  /**
-   * Converts this equivalence to a partial equivalence that cannot fail in
-   * either direction.
-   */
-  def toPartialEquivalence: PartialEquivalence[A, B, Nothing, Nothing] =
-    PartialEquivalence((a: A) => Right(to(a)), (b: B) => Right(from(b)))
 }
 
-object Equivalence extends Lawful2[Equivalence, Equal, Equal] {
+object Equivalence {
 
-  lazy val leftIdentity: Laws2[Equivalence, Equal, AnyF] =
-    new Laws2.Law1Left[Equivalence, Equal, AnyF]("leftIdentity") {
-      def apply[A: Equal, B: AnyF](a: A)(implicit equivalence: Equivalence[A, B]): TestResult =
-        equivalence.from(equivalence.to(a)) <-> a
-    }
+  def apply[A, B](to0: A => B, from0: B => A): Equivalence[A, B] = new Equivalence[A, B] {
+    override def to: A => B   = to0
+    override def from: B => A = from0
+  }
 
-  lazy val rightIdentity: Laws2[Equivalence, AnyF, Equal] =
-    new Laws2.Law1Right[Equivalence, AnyF, Equal]("rightIdentity") {
-      def apply[A: AnyF, B: Equal](b: B)(implicit equivalence: Equivalence[A, B]): TestResult =
-        equivalence.to(equivalence.from(b)) <-> b
-    }
+  def fromPartial[A, B, E1, E2](
+    toPartial0: A => Either[E1, B],
+    fromPartial0: B => Either[E2, A]
+  )(ev1: E1 <:< Nothing, ev2: E2 <:< Nothing): Equivalence[A, B] =
+    Equivalence(
+      toPartial0.andThen { case Left(value) => ev1(value); case Right(value) => value },
+      fromPartial0.andThen { case Left(value) => ev2(value); case Right(value) => value }
+    )
 
-  lazy val laws: Laws2[Equivalence, Equal, Equal] =
-    leftIdentity + rightIdentity
+  def unapply[A, B](self: Equivalence[A, B]): Some[(A => B, B => A)] =
+    Some((self.to, self.from))
 
   /**
    * Constructs the identity equivalence, which just says that any type is

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,12 @@
 
 package zio.prelude
 
-package object experimental extends ApplicationComposeSyntax with BothComposeSyntax with EitherComposeSyntax {
+package object experimental
+    extends AbsorptionSyntax
+    with ApplicationComposeSyntax
+    with BothComposeSyntax
+    with ComplementSyntax
+    with EitherComposeSyntax {
 
   object classic {
 

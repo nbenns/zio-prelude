@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,8 @@
 package zio.prelude
 
 import zio._
-import zio.prelude.coherent.CommutativeBothDeriveEqualInvariant
 import zio.prelude.newtypes.{AndF, Failure, OrF}
 import zio.stream.{ZSink, ZStream}
-import zio.test.TestResult
-import zio.test.laws._
 
 import scala.annotation.implicitNotFound
 
@@ -32,26 +29,7 @@ import scala.annotation.implicitNotFound
 @implicitNotFound("No implicit CommutativeBoth defined for ${F}.")
 trait CommutativeBoth[F[_]] extends AssociativeBoth[F]
 
-object CommutativeBoth extends LawfulF.Invariant[CommutativeBothDeriveEqualInvariant, Equal] {
-
-  /**
-   * For all `fa` and `fb`, `both(fa, fb)` is equivalent to `both(fb, fa)`.
-   */
-  lazy val commutativeLaw: LawsF.Invariant[CommutativeBothDeriveEqualInvariant, Equal] =
-    new LawsF.Invariant.Law2[CommutativeBothDeriveEqualInvariant, Equal]("commutativeLaw") {
-      def apply[F[_]: CommutativeBothDeriveEqualInvariant, A: Equal, B: Equal](fa: F[A], fb: F[B]): TestResult = {
-        val left  = fa.zipPar(fb)
-        val right = fb.zipPar(fa)
-        val left2 = Invariant[F].invmap(Equivalence.tupleFlip[A, B]).to(left)
-        left2 <-> right
-      }
-    }
-
-  /**
-   * The set of law laws that instances of `CommutativeBoth` must satisfy.
-   */
-  lazy val laws: LawsF.Invariant[CommutativeBothDeriveEqualInvariant, Equal] =
-    commutativeLaw + AssociativeBoth.laws
+object CommutativeBoth {
 
   /**
    * Summons an implicit `CommutativeBoth[F]`.

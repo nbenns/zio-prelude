@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,6 @@
  */
 
 package zio.prelude
-
-import zio.prelude.coherent.CommutativeEqual
-import zio.test.TestResult
-import zio.test.laws.{Lawful, Laws}
 
 /**
  * The `Commutative` type class describes a binary operator for a type `A` that
@@ -44,27 +40,7 @@ trait Commutative[A] extends Associative[A] { self =>
   final def commute: Commutative[A] = Commutative((l, r) => self.combine(r, l))
 }
 
-object Commutative extends Lawful[CommutativeEqual] {
-
-  /**
-   * The commutative law states that for some binary operator `*`, for all
-   * values `a1` and `a2`, the following must hold:
-   *
-   * {{{
-   * a1 * a2 === a2 * a1
-   * }}}
-   */
-  lazy val commutativeLaw: Laws[CommutativeEqual] =
-    new Laws.Law2[CommutativeEqual]("commutativeLaw") {
-      def apply[A: CommutativeEqual](a1: A, a2: A): TestResult =
-        (a1 <> a2) <-> (a2 <> a1)
-    }
-
-  /**
-   * The set of all laws that instances of `Commutative` must satisfy.
-   */
-  lazy val laws: Laws[CommutativeEqual] =
-    commutativeLaw + Associative.laws
+object Commutative {
 
   /**
    * Summons an implicit `Commutative[A]`.

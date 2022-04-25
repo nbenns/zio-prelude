@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,9 +112,9 @@ object Derive {
   /**
    * The `DeriveEqual` instance for `Set`.
    */
-  implicit def SetDeriveEqual[A]: DeriveEqual[({ type lambda[x] = Set[A] })#lambda] =
-    new DeriveEqual[({ type lambda[x] = Set[A] })#lambda] {
-      def derive[B: Equal]: Equal[Set[A]] =
+  implicit val SetDeriveEqual: DeriveEqual[Set] =
+    new DeriveEqual[Set] {
+      def derive[A: Equal]: Equal[Set[A]] =
         Equal.SetHashPartialOrd
     }
 

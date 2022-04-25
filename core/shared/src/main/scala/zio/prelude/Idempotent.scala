@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,6 @@
  */
 
 package zio.prelude
-
-import zio.prelude.coherent.EqualIdempotent
-import zio.test.TestResult
-import zio.test.laws.{Lawful, Laws}
 
 /**
  * The `Idempotent` type class describes a binary operator for a type `A` that
@@ -51,27 +47,7 @@ trait Idempotent[A] extends Associative[A] { self =>
 
 }
 
-object Idempotent extends Lawful[EqualIdempotent] {
-
-  /**
-   * The idempotent law states that for some binary operator `*`, for all
-   * values `a`, the following must hold:
-   *
-   * {{{
-   * a * a === a
-   * }}}
-   */
-  lazy val idempotentLaw: Laws[EqualIdempotent] =
-    new Laws.Law1[EqualIdempotent]("idempotentLaw") {
-      def apply[A: EqualIdempotent](a: A): TestResult =
-        (a <> a) <-> a
-    }
-
-  /**
-   * The set of all laws that instances of `Idempotent` must satisfy.
-   */
-  lazy val laws: Laws[EqualIdempotent] =
-    idempotentLaw + Associative.laws
+object Idempotent {
 
   /**
    * Summons an implicit `Idempotent[A]`.

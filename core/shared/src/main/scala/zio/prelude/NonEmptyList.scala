@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -467,6 +467,15 @@ object NonEmptyList extends LowPriorityNonEmptyListImplicits {
     Associative.make(_ ++ _)
 
   /**
+   * The `AssociativeEither` instance for `NonEmptyList`.
+   */
+  implicit val NonEmptyListAssociativeEither: AssociativeEither[NonEmptyList] =
+    new AssociativeEither[NonEmptyList] {
+      def either[A, B](as: => NonEmptyList[A], bs: => NonEmptyList[B]): NonEmptyList[Either[A, B]] =
+        as.map(Left(_)) ++ bs.map(Right(_))
+    }
+
+  /**
    * The `IdentityFlatten` instance for `NonEmptyList`.
    */
   implicit val NonEmptyListIdentityFlatten: IdentityFlatten[NonEmptyList] =
@@ -567,6 +576,12 @@ object NonEmptyList extends LowPriorityNonEmptyListImplicits {
    */
   def fromIterable[A](head: A, tail: Iterable[A]): NonEmptyList[A] =
     fromCons(::(head, tail.toList))
+
+  /**
+   * Constructs a `NonEmptyList` from a `NonEmptyChunk`.
+   */
+  def fromNonEmptyChunk[A](nonEmptyChunk: NonEmptyChunk[A]): NonEmptyList[A] =
+    nonEmptyChunk.reduceMapRight(single)(cons)
 
   /**
    * Constructs a `NonEmptyList` from an initial state `start` by repeatedly

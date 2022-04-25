@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package zio.prelude
 package experimental
 
-import zio.URIO
+import zio._
 
 trait BothCompose[=>:[-_, +_]] extends AssociativeCompose[=>:] {
 
@@ -89,6 +89,36 @@ object BothCompose {
 
     def compose[A, B, C](bc: URIO[B, C], ab: URIO[A, B]): URIO[A, C] =
       AssociativeCompose.URIOIdentityCompose.compose(bc, ab)
+  }
+
+  implicit val URLayerApplicationCompose: BothCompose[URLayer] = new BothCompose[URLayer] {
+
+    type :*:[+f, +s] = Tuple2[f, s]
+
+    def fromFirst[A]: URLayer[(A, Any), A] = ZLayer.first
+
+    def fromSecond[B]: URLayer[(Any, B), B] = ZLayer.second
+
+    def toBoth[A, B, C](a2b: URLayer[A, B])(a2c: URLayer[A, C]): URLayer[A, (B, C)] =
+      a2b <&> a2c
+
+    def compose[A, B, C](bc: URLayer[B, C], ab: URLayer[A, B]): URLayer[A, C] =
+      AssociativeCompose.URLayerIdentityCompose.compose(bc, ab)
+  }
+
+  implicit val URManagedApplicationCompose: BothCompose[URManaged] = new BothCompose[URManaged] {
+
+    type :*:[+f, +s] = Tuple2[f, s]
+
+    def fromFirst[A]: URManaged[(A, Any), A] = ZManaged.first
+
+    def fromSecond[B]: URManaged[(Any, B), B] = ZManaged.second
+
+    def toBoth[A, B, C](a2b: URManaged[A, B])(a2c: URManaged[A, C]): URManaged[A, (B, C)] =
+      a2b &&& a2c
+
+    def compose[A, B, C](bc: URManaged[B, C], ab: URManaged[A, B]): URManaged[A, C] =
+      AssociativeCompose.URManagedIdentityCompose.compose(bc, ab)
   }
 
 }

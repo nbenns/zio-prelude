@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,9 @@
 package zio.prelude
 
 import zio._
-import zio.prelude.coherent.AssociativeBothDeriveEqualInvariant
 import zio.prelude.newtypes.{AndF, Failure, OrF}
 import zio.stm.ZSTM
 import zio.stream.{ZSink, ZStream}
-import zio.test.TestResult
-import zio.test.laws._
 
 import scala.annotation.implicitNotFound
 import scala.concurrent.Future
@@ -41,37 +38,13 @@ trait AssociativeBoth[F[_]] {
   def both[A, B](fa: => F[A], fb: => F[B]): F[(A, B)]
 }
 
-object AssociativeBoth extends LawfulF.Invariant[AssociativeBothDeriveEqualInvariant, Equal] {
+object AssociativeBoth {
 
   /**
    * Summons an implicit `AssociativeBoth[F]`.
    */
   def apply[F[_]](implicit associativeBoth: AssociativeBoth[F]): AssociativeBoth[F] =
     associativeBoth
-
-  /**
-   * For all `fa`, `fb`, and `fc`, `both(fa, both(fb, fc))` is equivalent
-   * to `both(both(fa, fb), fc)`.
-   */
-  lazy val associativityLaw: LawsF.Invariant[AssociativeBothDeriveEqualInvariant, Equal] =
-    new LawsF.Invariant.Law3[AssociativeBothDeriveEqualInvariant, Equal]("associativityLaw") {
-      def apply[F[_]: AssociativeBothDeriveEqualInvariant, A: Equal, B: Equal, C: Equal](
-        fa: F[A],
-        fb: F[B],
-        fc: F[C]
-      ): TestResult = {
-        val left  = fa.zip(fb.zip(fc))
-        val right = (fa.zip(fb)).zip(fc)
-        val left2 = Invariant[F].invmap(Equivalence.tuple[A, B, C]).to(left)
-        left2 <-> right
-      }
-    }
-
-  /**
-   * The set of law laws that instances of `AssociativeBoth` must satisfy.
-   */
-  lazy val laws: LawsF.Invariant[AssociativeBothDeriveEqualInvariant, Equal] =
-    associativityLaw
 
   def fromCovariantAssociativeFlatten[F[+_]](implicit
     covariant: Covariant[F],
@@ -1078,10 +1051,11 @@ object AssociativeBoth extends LawfulF.Invariant[AssociativeBothDeriveEqualInvar
     )
 
   /**
-   * The `AssociativeBoth` instance for `Chunk`.
+   * The `IdentityBoth` instance for `Chunk`.
    */
-  implicit val ChunkAssociativeBoth: AssociativeBoth[Chunk] =
-    new AssociativeBoth[Chunk] {
+  implicit val ChunkIdentityeBoth: IdentityBoth[Chunk] =
+    new IdentityBoth[Chunk] {
+      def any: Chunk[Any]                                             = Chunk.unit
       def both[A, B](fa: => Chunk[A], fb: => Chunk[B]): Chunk[(A, B)] = fa.flatMap(a => fb.map(b => (a, b)))
     }
 
@@ -1235,18 +1209,22 @@ object AssociativeBoth extends LawfulF.Invariant[AssociativeBothDeriveEqualInvar
     }
 
   /**
-   * The `AssociativeBoth` instance for `ZIO`.
+   * The `IdentityBoth` instance for `ZIO`.
    */
-  implicit def ZIOAssociativeBoth[R, E]: AssociativeBoth[({ type lambda[+a] = ZIO[R, E, a] })#lambda] =
-    new AssociativeBoth[({ type lambda[+a] = ZIO[R, E, a] })#lambda] {
+  implicit def ZIOIdentityBoth[R, E]: IdentityBoth[({ type lambda[+a] = ZIO[R, E, a] })#lambda] =
+    new IdentityBoth[({ type lambda[+a] = ZIO[R, E, a] })#lambda] {
+      val any: ZIO[R, E, Any] = ZIO.unit
+
       def both[A, B](fa: => ZIO[R, E, A], fb: => ZIO[R, E, B]): ZIO[R, E, (A, B)] = fa zip fb
     }
 
   /**
-   * The `AssociativeBoth` instance for failed `ZIO`.
+   * The `IdentityBoth` instance for failed `ZIO`.
    */
-  implicit def ZIOFailureAssociativeBoth[R, A]: AssociativeBoth[({ type lambda[+e] = Failure[ZIO[R, e, A]] })#lambda] =
-    new AssociativeBoth[({ type lambda[+e] = Failure[ZIO[R, e, A]] })#lambda] {
+  implicit def ZIOFailureIdentityBoth[R, A]: IdentityBoth[({ type lambda[+e] = Failure[ZIO[R, e, A]] })#lambda] =
+    new IdentityBoth[({ type lambda[+e] = Failure[ZIO[R, e, A]] })#lambda] {
+      val any: Failure[ZIO[R, Any, A]] = Failure.wrap(ZIO.fail(()))
+
       def both[EA, EB](
         fa: => Failure[ZIO[R, EA, A]],
         fb: => Failure[ZIO[R, EB, A]]
@@ -1257,27 +1235,31 @@ object AssociativeBoth extends LawfulF.Invariant[AssociativeBothDeriveEqualInvar
     }
 
   /**
-   * The `AssociativeBoth` instance for `ZLayer`.
+   * The `IdentityBoth` instance for `ZLayer`.
    */
-  implicit def ZLayerAssociativeBoth[R, E]: AssociativeBoth[({ type lambda[+a] = ZLayer[R, E, a] })#lambda] =
-    new AssociativeBoth[({ type lambda[+a] = ZLayer[R, E, a] })#lambda] {
+  implicit def ZLayerIdentityBoth[R, E]: IdentityBoth[({ type lambda[+a] = ZLayer[R, E, a] })#lambda] =
+    new IdentityBoth[({ type lambda[+a] = ZLayer[R, E, a] })#lambda] {
+      val any: ZLayer[R, E, Any] = ZLayer.succeed(())
+
       def both[A, B](fa: => ZLayer[R, E, A], fb: => ZLayer[R, E, B]): ZLayer[R, E, (A, B)] = fa zipPar fb
     }
 
   /**
    * The `AssociativeBoth` instance for `ZManaged`.
    */
-  implicit def ZManagedAssociativeBoth[R, E]: AssociativeBoth[({ type lambda[+a] = ZManaged[R, E, a] })#lambda] =
-    new AssociativeBoth[({ type lambda[+a] = ZManaged[R, E, a] })#lambda] {
+  implicit def ZManagedIdentityBoth[R, E]: IdentityBoth[({ type lambda[+a] = ZManaged[R, E, a] })#lambda] =
+    new IdentityBoth[({ type lambda[+a] = ZManaged[R, E, a] })#lambda] {
+      val any: ZManaged[R, E, Any]                                                               = ZManaged.unit
       def both[A, B](fa: => ZManaged[R, E, A], fb: => ZManaged[R, E, B]): ZManaged[R, E, (A, B)] = fa zip fb
     }
 
   /**
-   * The `AssociativeBoth` instance for failed `ZManaged`.
+   * The `IdentityBoth` instance for failed `ZManaged`.
    */
-  implicit def ZManagedFailureAssociativeBoth[R, A]
-    : AssociativeBoth[({ type lambda[+e] = Failure[ZManaged[R, e, A]] })#lambda] =
-    new AssociativeBoth[({ type lambda[+e] = Failure[ZManaged[R, e, A]] })#lambda] {
+  implicit def ZManagedFailureIdentityBoth[R, A]
+    : IdentityBoth[({ type lambda[+e] = Failure[ZManaged[R, e, A]] })#lambda] =
+    new IdentityBoth[({ type lambda[+e] = Failure[ZManaged[R, e, A]] })#lambda] {
+      val any: Failure[ZManaged[R, Any, A]] = Failure.wrap(ZManaged.fail(()))
       def both[EA, EB](
         fa: => Failure[ZManaged[R, EA, A]],
         fb: => Failure[ZManaged[R, EB, A]]
@@ -1296,10 +1278,11 @@ object AssociativeBoth extends LawfulF.Invariant[AssociativeBothDeriveEqualInvar
     }
 
   /**
-   * The `AssociativeBoth` instance for `ZSTM`.
+   * The `IdentityBoth` instance for `ZSTM`.
    */
-  implicit def ZSTMAssociativeBoth[R, E]: AssociativeBoth[({ type lambda[+a] = ZSTM[R, E, a] })#lambda] =
-    new AssociativeBoth[({ type lambda[+a] = ZSTM[R, E, a] })#lambda] {
+  implicit def ZSTMIdentityBothBoth[R, E]: IdentityBoth[({ type lambda[+a] = ZSTM[R, E, a] })#lambda] =
+    new IdentityBoth[({ type lambda[+a] = ZSTM[R, E, a] })#lambda] {
+      val any: ZSTM[R, E, Any]                                                       = ZSTM.unit
       def both[A, B](fa: => ZSTM[R, E, A], fb: => ZSTM[R, E, B]): ZSTM[R, E, (A, B)] = fa zip fb
     }
 

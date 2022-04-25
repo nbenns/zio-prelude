@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 John A. De Goes and the ZIO Contributors
+ * Copyright 2020-2022 John A. De Goes and the ZIO Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ object Divariant {
       override def leftContramap[A, B, C](c2a: C => A): (A => B) => C => B = { a2b => c =>
         c |> c2a |> a2b
       }
-      override def rightMap[A, B, C](b2c: B => C): (A => B) => A => C = { a2b => a =>
+      override def rightMap[A, B, C](b2c: B => C): (A => B) => A => C      = { a2b => a =>
         a |> a2b |> b2c
       }
     }
